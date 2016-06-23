@@ -1,0 +1,29 @@
+{
+  "name": "probedock/probedock-phpunit",
+  "description": "PHPUnit probe to publish test results to Probe Dock.",
+  "keywords": ["probedock", "phpunit", "test", "analytics"],
+  "homepage": "https://github.com/probedock/probedock-phpunit",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Simon Oulevay",
+      "email": "simon.oulevay@probedock.io",
+      "homepage": "http://probedock.io",
+      "role": "Developer"
+    }
+  ],
+  "require": {
+    "php": ">=5.3",
+    "phpunit/phpunit": "3.7.*",
+    "guzzle/guzzle": "~3.7",
+    "doctrine/annotations": "1.*",
+    "symfony/yaml": "3.*",
+    "rhumsaa/uuid": "~2.7",
+    "camspiers/json-pretty": "~1.0"
+  },
+  "autoload": {
+    "psr-0": {
+      "ProbeDock": "src/"
+    }
+  }
+}
