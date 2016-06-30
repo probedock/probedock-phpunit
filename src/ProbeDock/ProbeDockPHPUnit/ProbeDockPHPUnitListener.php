@@ -2,12 +2,13 @@
 
 namespace ProbeDock\ProbeDockPHPUnit;
 
-use Rhumsaa\Uuid\Uuid;
+use Ramsey\Uuid\Uuid;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Symfony\Component\Yaml\Parser;
 use Symfony\Component\Yaml\Exception\ParseException;
-use Guzzle\Http\Client;
-use Guzzle\Common\Exception\GuzzleException;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7;
+use GuzzleHttp\Exception\RequestException;
 
 /**
  * This TestListener sends results to Probe Dock at the end of each test suite.
@@ -158,14 +159,15 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
       }
 
       // get payload v1 links from Probe Dock root URL
-      $this->httpClient = new Client();
-      $this->httpClient->setDefaultOption('headers/Authorization', "Bearer $probedockApiToken");
-
-      $request = $this->httpClient->get($probedockServerUrl . "/ping");
+      $this->httpClient = new Client([
+        'headers' => [
+          'Authorization' => "Bearer $probedockApiToken"
+        ]
+      ]);
 
       try {
-        $response = $request->send();
-      } catch (GuzzleException $e) {
+        $response = $this->httpClient->get($probedockServerUrl . "/ping");
+      } catch (RequestException $e) {
         throw new ProbeDockPHPUnitException("Probe Dock - ERROR: Unable to contact Probe Dock server: {$e->getMessage()}");
       }
 
@@ -300,10 +302,14 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
       // publish payload
       if ($this->config['payload']['publish']) {
         $jsonPayload = json_encode($utf8Payload);
-        $request = $this->httpClient->post($this->testsPayloadUrl, array("Content-Type" => "application/json"), $jsonPayload, array("exceptions" => false));
         try {
-          $response = $request->send();
-        } catch (GuzzleException $e) {
+          $response = $this->httpClient->post($this->testsPayloadUrl, [
+            'headers' => [
+              'Content-Type' => 'application/json'
+            ],
+            'body' => $jsonPayload
+          ]);
+        } catch (RequestException $e) {
           throw new ProbeDockPHPUnitException("Probe Dock - ERROR: Unable to post results to Probe Dock server: {$e->getMessage()}");
         }
         if ($response->getStatusCode() == 202) {
