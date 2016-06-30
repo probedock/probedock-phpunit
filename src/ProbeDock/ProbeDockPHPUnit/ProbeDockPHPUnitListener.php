@@ -84,6 +84,10 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
         $this->config = $this->overrideConfig($userConfig, $projectConfig);
       }
 
+      if (!isset($this->config['project']['category'])) {
+        $this->config['project']['category'] = 'PHPUnit';
+      }
+
       // override/augment config with Probe Dock environment variables
       if (getenv("PROBEDOCK_SERVER")) {
         $this->config['server'] = getenv("PROBEDOCK_SERVER");
@@ -167,38 +171,11 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
 
       $this->testsPayloadUrl = $probedockServerUrl . "/publish";
 
-      // load cache, if needed
-      /*if (isset($this->config['payload']['cache']) && $this->config['payload']['cache']) {
-        if (!isset($this->config['workspace'])) {
-          throw new ProbeDockPHPUnitException("Probe Dock - ERROR: missing workspace in config files or environment variables. Can not locate cache.");
-        }
-        if (!isset($this->config['project']['apiId'])) {
-          throw new ProbeDockPHPUnitException("Probe Dock - ERROR: missing apiId for project in config files.");
-        }
-        $this->cache = array();
-        $cachePath = "{$this->config['workspace']}/phpunit/servers/{$this->config['server']}/cache.json";
-        if (file_exists($cachePath)) {
-          $cacheJson = file_get_contents($cachePath);
-          if (!$cacheJson) {
-            throw new ProbeDockPHPUnitException("Probe Dock - ERROR: unable to read cache file ($cachePath)");
-          }
-          $this->cacheFile = json_decode($cacheJson, true);
-          if (!$this->cacheFile) {
-            throw new ProbeDockPHPUnitException("Probe Dock - ERROR: unable to decode JSON of cache file ($cachePath)");
-          }
-          if (isset($this->cacheFile[$this->config['project']['apiId']]) && is_array($this->cacheFile[$this->config['project']['apiId']])) {
-            $this->cache = $this->cacheFile[$this->config['project']['apiId']];
-          } else {
-            $this->probeLog .= "Probe Dock - WARNING: no existing cache data for this project.\n";
-          }
-        }
-      }*/
-
       // init class properties
       $this->testSuiteStartTime = intval(microtime(true) * 1000); // UNIX timestamp in ms
       $this->annotationReader = new AnnotationReader();
       $this->nbOfPayloadsSent = 0;
-      
+
       // log info
       $this->probeLog .= "Probe Dock - INFO Probe Dock API: {$this->config['servers'][$this->config['server']]['apiUrl']}\n";
     } catch (ProbeDockPHPUnitException $e) {
@@ -252,7 +229,7 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
 
   public function addSkippedTest(\PHPUnit_Framework_Test $test, \Exception $e, $time) {
     if ($this->currentTest) {
-      $this->currentTest['f'] = ProbeDock::INACTIVE_TEST_FLAG;
+      $this->currentTest['v'] = false;
     }
   }
 
@@ -289,31 +266,33 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
       $payload = array();
 
       // set test run UID
-      $payload['u'] = $this->testsRunUid;
+      $payload['reports'] = array(
+        array('uid' => $this->testsRunUid)
+      );
 
       // set test run duration
       $endTime = intval(microtime(true) * 1000); // UNIX timestamp in ms
-      $payload['d'] = ($endTime - $this->testSuiteStartTime);
+      $payload['duration'] = ($endTime - $this->testSuiteStartTime);
 
       // set project infos
-      $payload['r'] = array(array());
+      $payload['results'] = array(array());
 
       // set project API identifier
       if (isset($this->config['project']['apiId'])) {
-        $payload['r'][0]['j'] = $this->config['project']['apiId'];
+        $payload['projectId'] = $this->config['project']['apiId'];
       } else {
         throw new ProbeDockPHPUnitException("Probe Dock - ERROR missing apiId for project in config files.");
       }
 
       // set project version
       if (isset($this->config['project']['version'])) {
-        $payload['r'][0]['v'] = $this->config['project']['version'];
+        $payload['version'] = $this->config['project']['version'];
       } else {
         throw new ProbeDockPHPUnitException("Probe Dock - ERROR missing version for project in config files.");
       }
 
       // set test results
-      $payload['r'][0]['t'] = $this->currentTestSuite;
+      $payload['results'] = $this->currentTestSuite;
 
       // convert payload in UTF-8
       $utf8Payload = $this->convertEncoding($payload, self::PAYLOAD_ENCODING);
@@ -332,22 +311,6 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
           $coverageRatio = $this->nbOfProbeDockTests / $this->nbOfTests;
           $formatter = new \NumberFormatter(locale_get_default(), \NumberFormatter::PERCENT);
           $this->probeLog .= "Probe Dock - INFO {$this->nbOfProbeDockTests} test results successfully sent (payload {$this->nbOfPayloadsSent}) out of {$this->nbOfTests} ({$formatter->format($coverageRatio)}) tests in {$suite->getName()}.\n";
-
-          // save cache, if cache is used
-          if ($this->config['payload']['cache']) {
-            foreach ($this->cache as $key => $hash) {
-              $this->cacheFile[$this->config['project']['apiId']][$key] = $hash;
-            }
-            $utf8cache = $this->convertEncoding($this->cacheFile, self::PAYLOAD_ENCODING);
-            $jsonCache = json_encode($utf8cache);
-            $cacheDirPath = "{$this->config['workspace']}/phpunit/servers/{$this->config['server']}";
-            if (!file_exists($cacheDirPath)) {
-              mkdir($cacheDirPath, 0755, true);
-            }
-            if (!file_put_contents($cacheDirPath . "/cache.json", $jsonCache)) {
-              throw new ProbeDockPHPUnitException("Probe Dock - ERROR unable to save cache in workspace");
-            }
-          }
         } else {
           $this->probeLog .= "Probe Dock - ERROR Probe Dock server ({$this->testsPayloadUrl}) returned an HTTP {$response->getStatusCode()} error:\n{$response->getBody(true)}\n";
         }
