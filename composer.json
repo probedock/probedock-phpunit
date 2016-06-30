@@ -14,12 +14,12 @@
   ],
   "require": {
     "php": ">=5.3",
-    "phpunit/phpunit": "3.7.*",
-    "guzzle/guzzle": "~3.7",
-    "doctrine/annotations": "1.*",
-    "symfony/yaml": "3.*",
-    "rhumsaa/uuid": "~2.7",
-    "camspiers/json-pretty": "~1.0"
+    "phpunit/phpunit": ">=3.7 <6.0.0",
+    "guzzlehttp/guzzle": "^6.2",
+    "ramsey/uuid": "^3.4",
+    "camspiers/json-pretty": "^1.0",
+    "doctrine/annotations": "^1.2",
+    "symfony/yaml": "^3.1"
   },
   "autoload": {
     "psr-0": {
