@@ -375,115 +375,72 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
     $this->currentTest = null;
     $this->nbOfTests += 1;
     if (!ProbeDockPHPUnitException::exceptionOccured()) {
+
       $testName = $test->getName();
+      $convertedTestName = preg_replace('/(?!^)[A-Z]{2,}(?=[A-Z][a-z])|[A-Z][a-z]/', ' $0', $testName);
+
+      $this->currentTest = [
+        'n' => ucfirst(strtolower($convertedTestName)),
+        'g' => [],
+        't' => []
+      ];
+
+      if (isset($this->config['project']['category'])) {
+        $this->currentTest['c'] = $this->config['project']['category'];
+      }
+
+      if (isset($this->config['project']['tags']) && is_array($this->config['project']['tags'])) {
+        $this->currentTest['g'] = array_unique(array_merge($this->currentTest['g'], $this->config['project']['tags']));
+      }
+
+      if (isset($this->config['project']['tickets']) && is_array($this->config['project']['tickets'])) {
+        $this->currentTest['t'] = array_unique(array_merge($this->currentTest['t'], $this->config['project']['tickets']));
+      }
+
+      $this->nbOfProbeDockTests += 1;
+
       $reflectionObject = new \ReflectionObject($test);
       $reflectionMethod = $reflectionObject->getMethod($testName);
       $annotations = $this->annotationReader->getMethodAnnotations($reflectionMethod);
+
       foreach ($annotations as $annotation) {
         if ($annotation instanceof ProbeDock) {
           // this is a Probe Dock-annotated test
           try {
-            $this->currentTest = array();
-            $this->nbOfProbeDockTests += 1;
-
             // set test key
-            $this->currentTest['k'] = $annotation->getKey();
-
-            // set test name
-            $userDefinedTestName = $annotation->getName();
-            if ($userDefinedTestName) {
-              $this->currentTest['n'] = $userDefinedTestName;
-            } else {
-              $convertedTestName = preg_replace('/(?!^)[A-Z]{2,}(?=[A-Z][a-z])|[A-Z][a-z]/', ' $0', $testName);
-              $this->currentTest['n'] = ucfirst(strtolower($convertedTestName));
+            $key = $annotation->getKey();
+            if ($key) {
+              $this->currentTest['k'] = $key;
             }
 
-            // set default for passed
-            $this->currentTest['p'] = true;
+            // set test name
+            $name = $annotation->getName();
+            if ($name) {
+              $this->currentTest['n'] = $name;
+            }
 
-            // set flags
-            $flag = $annotation->getFlags();
-            if ($flag > 0) {
-              $this->currentTest['f'] = $flag;
+            // set active
+            $active = $annotation->getActive();
+            if (!$active) {
+              $this->currentTest['v'] = false;
             }
 
             // set category
-            $userProposedCategory = $annotation->getCategory();
-            if ($userProposedCategory) {
-              $this->currentTest['c'] = $userProposedCategory;
-            } else if (isset($this->config['project']['category'])) {
-              $this->currentTest['c'] = $this->config['project']['category'];
+            $category = $annotation->getCategory();
+            if ($category) {
+              $this->currentTest['c'] = $category;
             }
 
             // set tags
-            if (isset($this->config['project']['tags'])) {
-              $allTags = $this->config['project']['tags'];
-            } else {
-              $allTags = array();
-            }
-            $testTags = $annotation->getTags();
-            if ($testTags) {
-              foreach ($testTags as $tag) {
-                if (!in_array($tag, $allTags)) {
-                  array_push($allTags, $tag);
-                }
-              }
-            }
-            if (!empty($allTags)) {
-              sort($allTags);
-              $this->currentTest['g'] = $allTags;
+            $tags = $annotation->getTags();
+            if ($tags) {
+              $this->currentTest['g'] = array_unique(array_merge($this->currentTest['g'], $tags));
             }
 
             // set tickets
-            if (isset($this->config['project']['tickets'])) {
-              $allTickets = $this->config['project']['tickets'];
-            } else {
-              $allTickets = array();
-            }
-            $testTickets = $annotation->getTickets();
-            if ($testTickets) {
-              foreach ($testTickets as $ticket) {
-                if (!in_array($ticket, $allTickets)) {
-                  array_push($allTickets, $ticket);
-                }
-              }
-            }
-            if (!empty($allTickets)) {
-              sort($allTickets);
-              $this->currentTest['t'] = $allTickets;
-            }
-
-            // use cache, only if it is enabled
-            if ($this->config['payload']['cache']) {
-              // get previous hash if any
-              $oldHash = null;
-              if (isset($this->cache[$this->currentTest['k']])) {
-                $oldHash = $this->cache[$this->currentTest['k']];
-              }
-
-              // compute new hash
-              $hashContent = $this->currentTest['n'] . " || ";
-              if (isset($this->currentTest['c'])) {
-                $hashContent .= $this->currentTest['c'];
-              }
-              $hashContent .= " || ";
-              if (isset($this->currentTest['g'])) {
-                $hashContent .= implode(" ", $this->currentTest['g']);
-              }
-              $hashContent .= " || ";
-              if (isset($this->currentTest['t'])) {
-                $hashContent .= implode(" ", $this->currentTest['t']);
-              }
-              $newHash = hash("sha256", $hashContent);
-
-              if ($oldHash === $newHash) {
-                unset($this->currentTest['n']);
-                unset($this->currentTest['c']);
-                unset($this->currentTest['g']);
-                unset($this->currentTest['t']);
-              } else {
-                $this->cache[$this->currentTest['k']] = $newHash;
-              }
+            $tickets = $annotation->getTickets();
+            if ($tickets) {
+              $this->currentTest['t'] = array_unique(array_merge($this->currentTest['t'], $tickets));
             }
           } catch (ProbeDockPHPUnitException $e) {
             $this->probeLog .= $e->getMessage() . "\n";

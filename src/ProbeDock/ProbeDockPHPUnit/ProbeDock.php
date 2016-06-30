@@ -24,12 +24,14 @@ class ProbeDock {
 
   public function getKey() {
     if (!isset($this->probedockAnnotations['key'])) {
-      throw new ProbeDockPHPUnitException('A ProbeDock annotation was found, but the Probe Dock test key is not set.');
+      return null;
     }
+
     $key = $this->probedockAnnotations['key'];
     if ($key === null || !is_string($key) || empty($key)) {
-      throw new ProbeDockPHPUnitException('A ProbeDock annotation was found, but the Probe Dock test key is not valid.');
+      throw new ProbeDockPHPUnitException('An @ProbeDock annotation was found, but the Probe Dock test key is not valid (must be a non-empty string).');
     }
+
     return $key;
   }
 
@@ -91,12 +93,11 @@ class ProbeDock {
     return null;
   }
 
-  // We do not return an array of flags, because there is only one flag (INVALID).
-  public function getFlags() {
-    if (isset($this->probedockAnnotations['tickets']) && $this->probedockAnnotations['tickets'] === 'INVALID') {
-      return self::INACTIVE_TEST_FLAG;
+  public function getActive() {
+    if (isset($this->probedockAnnotations['active'])) {
+      return preg_match('/^(1|y|yes|t|true)$/i', (string) $this->probedockAnnotations['active']) === 1;
     } else {
-      return self::NO_FLAGS;
+      return true;
     }
   }
 
