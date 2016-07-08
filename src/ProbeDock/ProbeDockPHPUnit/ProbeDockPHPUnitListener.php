@@ -348,7 +348,7 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
       }
 
       // empty currentTestSuite to avoid double transmission of it.
-      $this->currentTestSuite = null;
+      $this->currentTestSuite = array();
     } catch (ProbeDockPHPUnitException $e) {
       $this->probeLog .= $e->getMessage() . "\n";
     }
