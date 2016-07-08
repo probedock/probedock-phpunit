@@ -4,6 +4,8 @@
 
 * [Setup](#setup)
 * [Usage](#usage)
+* [Troubleshooting](#troubleshooting)
+    * [AnnotationException: the annotation was never imported](#annotation-exception)
 
 
 
@@ -112,6 +114,48 @@ class DefaultControllerTest extends WebTestCase {
     $this->assertContains('Welcome to Symfony', $crawler->filter('#container h1')->text());
   }
 }
+```
+
+
+
+<a name="troubleshooting"></a>
+### Troubleshooting
+
+
+
+<a name="annotation-exception"></a>
+#### AnnotationException: the annotation was never imported
+
+This library uses [Doctrine annotations](http://doctrine-orm.readthedocs.io/projects/doctrine-common/en/latest/reference/annotations.html)
+so you can enrich tests with additional information such as tags.
+
+If you are using other annotations, they may come into conflict with the Doctrine annotations library.
+For example, this error may occur in a project where an `@expectedException` annotation was used in the tests:
+
+```
+Uncaught Doctrine\Common\Annotations\AnnotationException: [Semantical Error] The annotation "@expectedException" in method My\Class::testMethod() was never imported. Did you maybe forget to add a "use" statement for this annotation?
+```
+
+To solve this issue, you must add the annotations not known by Doctrine to its global ignore list.
+The following code in your tests' bootstrap file will do the trick:
+
+```php
+namespace Doctrine\Common\Annotations {
+  require __DIR__ . '/../vendor/autoload.php';
+  use Doctrine\Common\Annotations\AnnotationReader;
+
+  AnnotationReader::addGlobalIgnoredName('expectedException');
+  // Repeat the line above to ignore other annotations...
+}
+```
+
+If you do not already have a bootstrap file for your tests, you can create it and add its path to the `<phpunit>` tag in your `phpunit.xml.dist` configuration file:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="./tests/bootstrap.php" colors="true">
+  <!-- Your PHPUnit configuration... -->
+</phpunit>
 ```
 
 
