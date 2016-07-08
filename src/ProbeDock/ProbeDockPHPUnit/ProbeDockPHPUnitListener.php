@@ -376,7 +376,7 @@ class ProbeDockPHPUnitListener implements \PHPUnit_Framework_TestListener {
     $this->nbOfTests += 1;
     if (!ProbeDockPHPUnitException::exceptionOccured()) {
 
-      $testName = $test->getName();
+      $testName = $test->getName(false);
       $convertedTestName = preg_replace('/(?!^)[A-Z]{2,}(?=[A-Z][a-z])|[A-Z][a-z]/', ' $0', $testName);
 
       $this->currentTest = [
